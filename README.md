@@ -11,21 +11,27 @@ DSH Web GUI 的思维强度管理器插件。列出 harness 当前全部模型�
 ## 安装
 
 ```bash
-# 在运行 dsh 的终端（dsh 在 PATH 中）
+# 从 GitHub 安装（推荐，任何设备可用）
+dsh plugin --profile web add github:Lenonss/DeepSeekHarnessThirdModelThinkMgr
+
+# 本地目录安装（开发调试）
 dsh plugin --profile web add link:/path/to/packages/dsh-thinking-intensity
 
 # dsh 不在 PATH 时的备选
-npx @deepseek-ai/dsh plugin --profile web add link:/path/to/packages/dsh-thinking-intensity
+npx @deepseek-ai/dsh plugin --profile web add github:Lenonss/DeepSeekHarnessThirdModelThinkMgr
 ```
 
 `dsh plugin` 会在 `~/.dsh/profiles/web` 里执行 pnpm 安装，然后自动把声明了
 `dsh.bundle.patch` 的包追加进 `dsh.profile.bundles` 层列表（reconcile）。
 **装完需要重启 dsh（profile web）**，bundle 层变化才生效。
 
+注意：git 安装会在目标设备上运行 `prepare` 脚本（本包没有 prepare，直接使用
+仓库内已构建的 `lib/` 产物，无需构建环境）。
+
 ## 卸载
 
 ```bash
-dsh plugin --profile web remove @linxin666/dsh-thinking-intensity
+dsh plugin --profile web remove dsh-thinking-intensity
 ```
 
 重启 dsh 后生效。插件自己的设置项（`dsh-thinking-intensity` 命名空间）留在
@@ -91,6 +97,6 @@ dsh plugin --profile web remove @linxin666/dsh-thinking-intensity
 
 ## 备注
 
-- 本包为本地分发形态（`link:` 安装），不发布 npm。
+- 本仓库即插件包根目录，`master` 分支可直接 `dsh plugin add github:...` 安装。
 - 与动态 Cordis 插件（`think-*`）版本功能等价；两者同时存在时会重复注册
   「思维强度」设置分区，安装本包并验证通过后请移除动态版本。
