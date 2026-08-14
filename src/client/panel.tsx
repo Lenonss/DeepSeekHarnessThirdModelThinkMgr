@@ -15,10 +15,8 @@ import './panel.css'
 /** Props for the panel host. */
 export interface PanelProps {
   api: IntensityApi
-  /** Resolve the current session id (null while none is active). */
-  sessionId: () => SessionId | null
-  /** Re-resolve after a selection change (host may need to refresh). */
-  onSessionChanged?: () => void
+  /** Current session id; null while none is active. */
+  sessionId: SessionId | null
 }
 
 /** Combine a level id with its display name. */
@@ -292,7 +290,7 @@ function EditorBody(props: {
 /** Config editor: draft state + save/switch logic. */
 function ConfigEditor(props: {
   cfg: ConfigView
-  sessionId: () => SessionId | null
+  sessionId: SessionId | null
   api: IntensityApi
   onSaved: (cfg: ConfigView) => void
 }): React.ReactElement {
@@ -304,10 +302,9 @@ function ConfigEditor(props: {
     setBusy(true)
     setNote(null)
     try {
-      const sessionId = props.sessionId()
-      if (sessionId === null) throw new Error('当前没有活动会话')
+      if (props.sessionId === null) throw new Error('当前没有活动会话')
       await props.api.saveConfig(props.cfg.provider, props.cfg.model, payloadOf(draft), props.cfg.revision)
-      const fresh = await props.api.config(sessionId, props.cfg.provider, props.cfg.model)
+      const fresh = await props.api.config(props.sessionId, props.cfg.provider, props.cfg.model)
       setDraft(initDraft(fresh))
       props.onSaved(fresh)
       setNote('已保存到 settings 文档')
@@ -322,10 +319,9 @@ function ConfigEditor(props: {
       setBusy(true)
       setNote(null)
       try {
-        const sessionId = props.sessionId()
-        if (sessionId === null) throw new Error('当前没有活动会话')
-        await props.api.select(sessionId, props.cfg.provider, props.cfg.model, effort)
-        const fresh = await props.api.config(sessionId, props.cfg.provider, props.cfg.model)
+        if (props.sessionId === null) throw new Error('当前没有活动会话')
+        await props.api.select(props.sessionId, props.cfg.provider, props.cfg.model, effort)
+        const fresh = await props.api.config(props.sessionId, props.cfg.provider, props.cfg.model)
         props.onSaved(fresh)
         setNote(effort === null ? '已切换当前模型（提供方默认强度）' : `当前强度已切换: ${effort}`)
       } catch (err) {
@@ -365,13 +361,14 @@ export function IntensityManager(props: PanelProps): React.ReactElement {
   const [cfg, setCfg] = useState<ConfigView | null>(null)
   const [cfgError, setCfgError] = useState<string | null>(null)
 
+  const sessionId = props.sessionId
+
   const loadDir = useCallback(async (): Promise<DirectoryView | null> => {
+    if (sessionId === null) {
+      setDirError('当前没有活动会话')
+      return null
+    }
     try {
-      const sessionId = props.sessionId()
-      if (sessionId === null) {
-        setDirError('当前没有活动会话')
-        return null
-      }
       const data = await props.api.directory(sessionId)
       setDir(data)
       setDirError(null)
@@ -380,16 +377,15 @@ export function IntensityManager(props: PanelProps): React.ReactElement {
       setDirError(err instanceof Error ? err.message : String(err))
       return null
     }
-  }, [props])
+  }, [props.api, sessionId])
 
   const loadCfg = useCallback(
     async (provider: string, model: string) => {
+      if (sessionId === null) {
+        setCfgError('当前没有活动会话')
+        return
+      }
       try {
-        const sessionId = props.sessionId()
-        if (sessionId === null) {
-          setCfgError('当前没有活动会话')
-          return
-        }
         const data = await props.api.config(sessionId, provider, model)
         setCfg(data)
         setCfgError(null)
@@ -397,7 +393,7 @@ export function IntensityManager(props: PanelProps): React.ReactElement {
         setCfgError(err instanceof Error ? err.message : String(err))
       }
     },
-    [props],
+    [props.api, sessionId],
   )
 
   const reload = useCallback(async () => {
@@ -408,19 +404,30 @@ export function IntensityManager(props: PanelProps): React.ReactElement {
     await loadCfg(target.provider, target.model)
   }, [loadDir, loadCfg, sel])
 
-  useEffect(() => {
-    void reload()
-  }, [reload])
+  // Initial load only: re-running on every `sel` change would race the click
+  // handler (click → setSel → reload → loadCfg overwrites the clicked model).
+  const boot = useCallback(async () => {
+    const data = await loadDir()
+    if (data === null || data.current === null) return
+    const target = { provider: data.current.provider, model: data.current.model }
+    setSel(target)
+    await loadCfg(target.provider, target.model)
+  }, [loadDir, loadCfg])
 
-  const select = (provider: string, model: string): void => {
+  useEffect(() => {
+    void boot()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const select = useCallback((provider: string, model: string): void => {
     setSel({ provider, model })
     void loadCfg(provider, model)
-  }
+  }, [loadCfg])
 
-  const saved = (fresh: ConfigView): void => {
+  const saved = useCallback((fresh: ConfigView): void => {
     setCfg(fresh)
     void loadDir()
-  }
+  }, [loadDir])
 
   const left =
     dir === null ? (

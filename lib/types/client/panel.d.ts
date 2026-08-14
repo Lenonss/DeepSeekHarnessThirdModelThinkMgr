@@ -11,10 +11,8 @@ import './panel.css';
 /** Props for the panel host. */
 export interface PanelProps {
     api: IntensityApi;
-    /** Resolve the current session id (null while none is active). */
-    sessionId: () => SessionId | null;
-    /** Re-resolve after a selection change (host may need to refresh). */
-    onSessionChanged?: () => void;
+    /** Current session id; null while none is active. */
+    sessionId: SessionId | null;
 }
 /**
  * The panel: two-column layout (left directory, right editor). Loads the

@@ -11,6 +11,7 @@
  * cordis loading needs plus types only — all value exports stay internal.
  */
 
+import React from 'react'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ConnectionHandle } from '@deepseek-ai/dsh-client-connection/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
@@ -70,9 +71,9 @@ export function apply(ctx: ClientContext): void {
       (props) => {
         // Global slot standard props: useSessions snapshot hook (SessionListState).
         const sessionId = props.useSessions((s) => s.current)
-        return IntensityManager({
+        return React.createElement(IntensityManager, {
           api,
-          sessionId: () => sessionId ?? null,
+          sessionId: sessionId ?? null,
         })
       },
     ),
