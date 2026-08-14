@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build tooling (regenerate locally; lib/ is committed so git installs
+# work without a build step)
+*.tsbuildinfo
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
